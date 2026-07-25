@@ -722,3 +722,73 @@ lsblk
 ✅ Real-Time Production Troubleshooting
 
 ✅ DevOps Interview Scenarios
+
+That's a great question. The answer depends on whether you're talking about a hard link or a soft link.
+
+Hard Link
+
+Initially, both filenames point to the exact same data on disk.
+
+Example:
+
+echo "Hello DevOps" > report.txt
+
+ln report.txt backup.txt
+
+Now:
+
+cat report.txt
+
+Output:
+
+Hello DevOps
+cat backup.txt
+
+Output:
+
+Hello DevOps
+
+If you modify one file:
+
+echo "New Content" > report.txt
+
+Now check both:
+
+cat report.txt
+New Content
+cat backup.txt
+New Content
+
+Why?
+
+Because there aren't actually two separate files with two separate copies of the data. There are two filenames (directory entries) pointing to the same inode, and that inode points to the same data blocks.
+
+report.txt ----\
+                \
+                 --> Inode 13521 --> Data: "New Content"
+                /
+backup.txt ----/
+
+So changing the content through either filename changes the same underlying data.
+
+Soft Link
+
+A soft link is different. It's just a pointer (shortcut) to another file.
+
+ln -s report.txt shortcut.txt
+
+If report.txt changes, shortcut.txt also shows the updated content because it accesses report.txt.
+
+However, if you delete report.txt:
+
+rm report.txt
+
+Then:
+
+cat shortcut.txt
+
+Output:
+
+cat: shortcut.txt: No such file or directory
+
+The soft link is now broken because its target no longer exists.
