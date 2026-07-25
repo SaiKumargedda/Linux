@@ -806,3 +806,405 @@ You have now covered:
 ✅ 25+ Common Linux Interview Questions
 
 This completes the **Linux interview preparation** for a **4+ years DevOps Engineer**. The next logical topic is **Git**, where we'll cover branching strategies, merge vs rebase, cherry-pick, reset, revert, stash, conflict resolution, enterprise workflows, and real-time interview scenarios.
+
+
+1. What is Verbose (-v)?
+
+Verbose means show detailed information while executing a command.
+
+Without verbose:
+
+tar -cf backup.tar app/
+
+Output:
+
+(no output)
+
+The archive is created, but you don't know what happened.
+
+With verbose:
+
+tar -cvf backup.tar app/
+
+Output:
+
+app/
+app/config.yaml
+app/start.sh
+app/logs/
+app/logs/app.log
+
+It prints every file being processed.
+
+You'll also see -v with other commands:
+
+cp -v app.jar /opt/apps/
+
+Output:
+
+'app.jar' -> '/opt/apps/app.jar'
+
+Verbose is mainly used for:
+
+Troubleshooting
+Monitoring long-running operations
+Confirming which files were processed
+2. Why do we use tar?
+
+Imagine your application looks like this:
+
+myapp/
+│
+├── app.jar
+├── config.yaml
+├── start.sh
+└── logs/
+
+You want to send it to another server.
+
+Instead of copying every file individually, create one archive.
+
+tar -cvf myapp.tar myapp/
+
+Now:
+
+myapp.tar
+
+contains
+
+myapp/
+
+app.jar
+
+config.yaml
+
+start.sh
+
+logs/
+
+Notice:
+
+Nothing is compressed yet.
+
+It is just one package.
+
+Extract
+tar -xvf myapp.tar
+
+Output
+
+myapp/
+app.jar
+config.yaml
+start.sh
+logs/
+
+Everything comes back exactly as it was.
+
+3. Why .tar.gz?
+
+A tar file is usually large.
+
+Compress it:
+
+tar -czvf myapp.tar.gz myapp/
+
+Here:
+
+c = Create
+z = Compress using gzip
+v = Verbose
+f = Output file
+
+Suppose your folder is:
+
+500 MB
+
+After compression:
+
+myapp.tar.gz
+
+120 MB
+
+Much easier to transfer or store.
+
+Extract:
+
+tar -xzvf myapp.tar.gz
+4. Difference Between tar and zip
+tar
+Popular on Linux.
+Preserves Linux permissions and ownership.
+Common for backups.
+
+Example:
+
+project.tar.gz
+zip
+
+Often used when sharing files with Windows users.
+
+zip -r project.zip project/
+
+Extract:
+
+unzip project.zip
+5. What is Log Rotation?
+
+Imagine your application writes logs continuously.
+
+Day 1
+
+app.log
+
+100 MB
+
+Day 10
+
+app.log
+
+3 GB
+
+Day 50
+
+app.log
+
+25 GB
+
+Eventually:
+
+Disk becomes full.
+
+The application may stop writing logs or even fail.
+
+Solution
+
+Rotate the logs.
+
+Instead of keeping one huge file:
+
+app.log
+
+Linux renames it:
+
+app.log
+
+↓
+
+app.log.1
+
+Creates a new empty file:
+
+app.log
+
+Now the application continues writing to the new log.
+
+Example
+
+Before rotation
+
+logs/
+
+app.log (2 GB)
+
+Run log rotation.
+
+After
+
+logs/
+
+app.log       (0 KB)
+
+app.log.1     (2 GB)
+
+The application now writes to:
+
+app.log
+
+The old log is safely stored in:
+
+app.log.1
+Does Logrotate Really Rotate?
+
+Yes.
+
+It actually:
+
+Renames the current log.
+Creates a new empty log.
+Optionally compresses the old log.
+Deletes very old logs based on your policy.
+Example Configuration
+/var/log/myapp/*.log {
+
+daily
+
+rotate 7
+
+compress
+
+missingok
+
+notifempty
+
+create 0644 appuser appgroup
+}
+
+Meaning:
+
+daily
+
+Rotate every day.
+
+rotate 7
+
+Keep only 7 old log files.
+
+compress
+
+Compress rotated logs.
+
+Example:
+
+app.log.1.gz
+
+instead of
+
+app.log.1
+missingok
+
+Don't fail if the log file doesn't exist.
+
+notifempty
+
+Don't rotate if the log is empty.
+
+create
+
+After rotation, create a new empty log with the specified permissions and owner.
+
+How Logs Look Over Time
+
+Day 1
+
+app.log
+
+Day 2
+
+app.log
+app.log.1.gz
+
+Day 3
+
+app.log
+app.log.1.gz
+app.log.2.gz
+
+...
+
+Day 8
+
+app.log
+app.log.1.gz
+...
+app.log.7.gz
+
+When Day 9 rotation occurs:
+
+app.log.7.gz
+
+is deleted (because rotate 7), the others shift up, and yesterday's log becomes app.log.1.gz.
+
+How Is This Used in Production?
+
+Suppose your Spring Boot application writes to:
+
+/opt/myapp/logs/app.log
+
+Every day at midnight, logrotate runs (typically via cron or a systemd timer).
+
+Before:
+
+app.log (1.5 GB)
+
+After rotation:
+
+app.log        (0 KB)
+
+app.log.1.gz   (1.5 GB)
+
+The Java application continues writing to the new app.log.
+
+Is Log Rotation a Backup?
+
+No.
+
+Log rotation is not a backup strategy.
+
+It is a log management strategy.
+
+For example:
+
+Application
+      │
+      ▼
+app.log
+      │
+      ▼
+Logrotate
+      │
+      ├── app.log      (new active log)
+      └── app.log.1.gz (old compressed log)
+
+If the server's disk fails, both files are lost.
+
+How Backup Works
+
+A backup copies important files to another location.
+
+Example daily backup script:
+
+tar -czf logs_$(date +%F).tar.gz /opt/myapp/logs
+
+This creates:
+
+logs_2026-07-23.tar.gz
+
+Then copy it to a backup server:
+
+scp logs_2026-07-23.tar.gz backupuser@backup-server:/backup/logs/
+
+Now you have:
+
+Server: Current logs managed by logrotate
+Backup Server: Archived log backup
+
+If the application server crashes completely, you can restore the logs from the backup server.
+
+Real Enterprise Flow
+Application
+      │
+      ▼
+app.log
+      │
+      ▼
+Logrotate (Daily)
+      │
+      ├── app.log (active)
+      ├── app.log.1.gz
+      ├── app.log.2.gz
+      └── app.log.3.gz
+      │
+      ▼
+Nightly Backup Job
+      │
+      ▼
+tar.gz archive
+      │
+      ▼
+Backup Server / Cloud Storage
+Interview Answer
+
+If asked, "Is logrotate a backup tool?", you can answer:
+
+No. Logrotate manages log files by rotating, compressing, and deleting old logs to prevent disk exhaustion. It does not create off-server backups. Backups require copying the logs or archives to another storage location such as a backup server or cloud storage.
